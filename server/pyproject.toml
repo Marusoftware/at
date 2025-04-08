@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "changeme"
+name = "at"
 version = "0.0.1"
-description = "changeme"
-authors = ["Changeme <changeme@marusoftware.net>"]
+description = "at"
+authors = ["at <at@marusoftware.net>"]
 license = "MIT"
 readme = "README.md"
 
@@ -29,7 +29,7 @@ tortoise-orm = {extras = ["asyncpg"], version = "^0.21.6"}
 
 
 [tool.aerich]
-tortoise_orm = "changeme.db.DB_CONFIG"
+tortoise_orm = "at.db.DB_CONFIG"
 location = "./migrations"
 src_folder = "./."
 [build-system]

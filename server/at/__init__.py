@@ -9,8 +9,8 @@ def custom_generate_unique_id(route: APIRouter):
     return f"{f'{route.tags[0]}-'if len(route.tags) else ''}{route.name}"
 
 app = FastAPI(
-    title="changeme",
-    description="changeme",
+    title="at",
+    description="at",
     version="0.0.1",
     root_path="/api/v1",
     generate_unique_id_function=custom_generate_unique_id,
