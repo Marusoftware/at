@@ -1,4 +1,5 @@
-from typing import List, Union
+from typing import List, Optional, Union
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi import APIRouter, Depends, Request
 import secrets
@@ -18,6 +19,9 @@ oauth=OAuth2PasswordBearer(tokenUrl="/api/v1/auth/signin")
 crypt=CryptContext(schemes=["bcrypt"], deprecated="auto")
 config=Settings()
 
+from .sso import router as sso_router
+router.include_router(sso_router, prefix="/sso")
+
 async def get_user(token: oauth=Depends()): # type: ignore
     token:Union[TokenDB,None]=await TokenDB.get_or_none(token=token).prefetch_related("user")
     
@@ -27,7 +31,7 @@ async def get_user(token: oauth=Depends()): # type: ignore
         return token.user
 
 @router.post("/signin", response_model=Token)
-async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), return_url:Optional[str]=None):
     user=await UserDB.get_or_none(Q(name=form_data.username) | Q(mail=form_data.username))
     if user is None:
         raise APIError(detail="Password or Username is wrong.")
@@ -38,6 +42,8 @@ async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depend
         if "users" not in request.session:
             request.session["users"]=[]
         request.session["users"].append({"name":user.name, "id":str(user.id), "token":token.token, "expired_in":token.expired_in.isoformat()})
+        if return_url is not None:
+            return RedirectResponse(return_url)
         return Token(access_token=token.token, token_type="bearer", user_id=user.id, expired_in=token.expired_in)
 
 @router.post("/signup", response_model=User)
