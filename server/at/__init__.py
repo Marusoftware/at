@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
+from fastapi.staticfiles import StaticFiles
 import contextlib
+from os.path import dirname
 
 from .exceptions import APIError, Forbidden, NotFound
 from .config import Settings
@@ -52,18 +53,4 @@ app.add_middleware(SessionMiddleware, secret_key=settings.SECRET)
 from .routes import router
 app.include_router(router)
 
-if settings.SERVE_STATIC is not None:
-    with open(f"{settings.SERVE_STATIC}/index.html", "r") as index_file:
-        index=index_file.read()
-    import os
-
-    @app.get('/{full_path:path}')
-    async def spa(full_path:str):
-        if full_path=="": full_path="index.html"
-        full_path = os.path.normpath(f"{settings.SERVE_STATIC}/{full_path}")
-        if not full_path.startswith(settings.SERVE_STATIC): # type:ignore
-            raise Forbidden(status_code=403, detail="Forbidden")
-        if os.path.exists(full_path):
-            return FileResponse(full_path)
-        else:
-            return HTMLResponse(index)
+app.mount("/static", StaticFiles(directory=dirname(__file__)+"/static"), name="static")

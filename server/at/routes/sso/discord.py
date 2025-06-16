@@ -26,7 +26,6 @@ async def discord_login(return_url:Optional[HttpUrl]=None):
     token=await TokenDB.create(token=secrets.token_hex(32), user=None,
                                expired_in=timezone.now()+settings.TOKEN_EXPIRE,
                                return_url=return_url, token_type=TokenType.oauth_state)
-    print("token", token.token)
     async with discord_sso:
         return await discord_sso.get_login_redirect(state=token.token)
 

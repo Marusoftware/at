@@ -9,6 +9,7 @@ class User(Model):
     mail=CharField(1024, unique=True)
     created_in=DatetimeField(auto_now_add=True)
     tokens:ReverseRelation["Token"]
+    messages:ReverseRelation["Message"]
 
 class TokenType(StrEnum):
     bearer="bearer"
@@ -21,3 +22,5 @@ class Token(Model):
     token_type=CharEnumField(TokenType, default=TokenType.bearer)
     return_url=CharField(max_length=512, null=True)
     user:ForeignKeyNullableRelation[User]=ForeignKeyField("models.User", related_name="tokens", null=True)
+
+from .message import Message

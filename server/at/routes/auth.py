@@ -1,11 +1,14 @@
-from typing import List, Optional, Union
-from fastapi.responses import RedirectResponse
+from typing import Annotated, List, Optional, Union
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Body, Depends, Form, Request
 import secrets
+from fastapi.templating import Jinja2Templates
 from passlib.context import CryptContext
+from pydantic import HttpUrl, SecretStr
 from tortoise.expressions import Q
 from tortoise import timezone
+from os.path import dirname
 
 from ..exceptions import APIError, Forbidden
 from ..models.response.user import User, Token
@@ -18,6 +21,7 @@ router=APIRouter(tags=["Auth"])
 oauth=OAuth2PasswordBearer(tokenUrl="/api/v1/auth/signin")
 crypt=CryptContext(schemes=["bcrypt"], deprecated="auto")
 config=Settings()
+templates = Jinja2Templates(directory=dirname(__file__)+"/../templates")
 
 from .sso import router as sso_router
 router.include_router(sso_router, prefix="/sso")
@@ -30,24 +34,50 @@ async def get_user(token: oauth=Depends()): # type: ignore
     else:
         return token.user
 
+@router.get("/signin", response_class=HTMLResponse)
+async def signin_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+    return templates.TemplateResponse(
+        request=request, name="signin/index.html", context={"return_url":return_url}
+    )
+
+def show_login_error(request:Request, return_url:HttpUrl):
+    if "application/json" in request.headers.get("accept", ""):
+        raise APIError(detail="Password or Username is wrong.")
+    else:
+        return templates.TemplateResponse(
+            request=request, name="signin/index.html", context={"return_url":str(return_url), "error":"Password or Username is wrong."}
+        )
+
 @router.post("/signin", response_model=Token)
-async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), return_url:Optional[str]=None):
+async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), return_url:HttpUrl=config.DEFAULT_RETURN_URL):
     user=await UserDB.get_or_none(Q(name=form_data.username) | Q(mail=form_data.username))
     if user is None:
-        raise APIError(detail="Password or Username is wrong.")
-    if user.password is not None:
+        return show_login_error(request, return_url)
+    if user.password != "":
         if not crypt.verify(form_data.password,user.password):
-            raise APIError(detail="Password or Username is wrong.")
+            return show_login_error(request, return_url)
         token=await TokenDB.create(token=secrets.token_hex(32), user=user, expired_in=timezone.now()+config.TOKEN_EXPIRE)
         if "users" not in request.session:
             request.session["users"]=[]
         request.session["users"].append({"name":user.name, "id":str(user.id), "token":token.token, "expired_in":token.expired_in.isoformat()})
-        if return_url is not None:
-            return RedirectResponse(return_url)
+        if return_url is not None and "application/json" not in request.headers.get("accept", ""):
+            return RedirectResponse(str(return_url))
         return Token(access_token=token.token, token_type="bearer", user_id=user.id, expired_in=token.expired_in)
+    else:
+        return show_login_error(request, return_url)
+
+@router.get("/signup", response_class=HTMLResponse)
+async def signup_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+    return templates.TemplateResponse(
+        request=request, name="signup/index.html", context={"return_url":str(return_url)}
+    )
 
 @router.post("/signup", response_model=User)
-async def signup(user:UserCreate):
+async def signup(request:Request, user:Annotated[Optional[UserCreate], Body()]=None, username: Annotated[Optional[str], Form()]=None, password:Annotated[Optional[SecretStr], Form()]=None, email:Annotated[Optional[str], Form()]=None, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+    if user is None:
+        if username is None or email is None or password is None:
+            return show_login_error(request, return_url)
+        user=UserCreate(name=username, mail=email, password=password)
     if await UserDB.exists(Q(name=user.name) | Q(mail=user.mail)):
         raise APIError(detail="Password or Username is wrong.")
     return await UserDB.create(name=user.name, mail=user.mail, password=crypt.hash(user.password.get_secret_value()))
