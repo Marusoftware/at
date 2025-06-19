@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 import secrets
 from fastapi.templating import Jinja2Templates
 from passlib.context import CryptContext
-from pydantic import HttpUrl, SecretStr
+from pydantic import HttpUrl, SecretStr, ValidationError
 from tortoise.expressions import Q
 from tortoise import timezone
 from os.path import dirname
@@ -40,7 +40,7 @@ async def signin_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_
         request=request, name="signin/index.html", context={"return_url":return_url}
     )
 
-def show_login_error(request:Request, return_url:HttpUrl):
+def show_signin_error(request:Request, return_url:HttpUrl):
     if "application/json" in request.headers.get("accept", ""):
         raise APIError(detail="Password or Username is wrong.")
     else:
@@ -52,10 +52,10 @@ def show_login_error(request:Request, return_url:HttpUrl):
 async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), return_url:HttpUrl=config.DEFAULT_RETURN_URL):
     user=await UserDB.get_or_none(Q(name=form_data.username) | Q(mail=form_data.username))
     if user is None:
-        return show_login_error(request, return_url)
+        return show_signin_error(request, return_url)
     if user.password != "":
         if not crypt.verify(form_data.password,user.password):
-            return show_login_error(request, return_url)
+            return show_signin_error(request, return_url)
         token=await TokenDB.create(token=secrets.token_hex(32), user=user, expired_in=timezone.now()+config.TOKEN_EXPIRE)
         if "users" not in request.session:
             request.session["users"]=[]
@@ -64,7 +64,15 @@ async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depend
             return RedirectResponse(str(return_url))
         return Token(access_token=token.token, token_type="bearer", user_id=user.id, expired_in=token.expired_in)
     else:
-        return show_login_error(request, return_url)
+        return show_signin_error(request, return_url)
+
+def show_signup_error(request:Request, return_url:HttpUrl):
+    if "application/json" in request.headers.get("accept", ""):
+        raise APIError(detail="Password or Username is wrong.")
+    else:
+        return templates.TemplateResponse(
+            request=request, name="signup/index.html", context={"return_url":str(return_url), "error":"Password or Username is wrong."}
+        )
 
 @router.get("/signup", response_class=HTMLResponse)
 async def signup_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
@@ -72,14 +80,24 @@ async def signup_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_
         request=request, name="signup/index.html", context={"return_url":str(return_url)}
     )
 
-@router.post("/signup", response_model=User)
-async def signup(request:Request, user:Annotated[Optional[UserCreate], Body()]=None, username: Annotated[Optional[str], Form()]=None, password:Annotated[Optional[SecretStr], Form()]=None, email:Annotated[Optional[str], Form()]=None, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
-    if user is None:
-        if username is None or email is None or password is None:
-            return show_login_error(request, return_url)
-        user=UserCreate(name=username, mail=email, password=password)
+@router.post("/signup", response_model=User, openapi_extra={"requestBody":{"content":{
+    "application/x-www-form-urlencoded": {"schema":UserCreate.model_json_schema()},
+    "application/json": {"schema":UserCreate.model_json_schema()}
+}}})
+async def signup(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+    try:
+        if "application/json" in request.headers.get("content-type", ""):
+            user=UserCreate.model_validate(await request.json())
+        else:
+            user=UserCreate.model_validate(await request.form())
+    except ValidationError:
+        return show_signup_error(request, return_url)
+    # if user is None:
+    #     if username is None or email is None or password is None:
+    #         return show_login_error(request, return_url)
+    #     user=UserCreate(name=username, mail=email, password=password)
     if await UserDB.exists(Q(name=user.name) | Q(mail=user.mail)):
-        raise APIError(detail="Password or Username is wrong.")
+        return show_signup_error(request, return_url)
     return await UserDB.create(name=user.name, mail=user.mail, password=crypt.hash(user.password.get_secret_value()))
 
 @router.post("/signout")
