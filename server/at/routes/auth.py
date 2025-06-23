@@ -92,13 +92,15 @@ async def signup(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
             user=UserCreate.model_validate(await request.form())
     except ValidationError:
         return show_signup_error(request, return_url)
-    # if user is None:
-    #     if username is None or email is None or password is None:
-    #         return show_login_error(request, return_url)
-    #     user=UserCreate(name=username, mail=email, password=password)
     if await UserDB.exists(Q(name=user.name) | Q(mail=user.mail)):
         return show_signup_error(request, return_url)
-    return await UserDB.create(name=user.name, mail=user.mail, password=crypt.hash(user.password.get_secret_value()))
+    db_user=await UserDB.create(name=user.name, mail=user.mail, password=crypt.hash(user.password.get_secret_value()))
+    if "application/json" in request.headers.get("accept",""):
+        return db_user
+    else:
+        return templates.TemplateResponse(
+            request=request, name="signup/success.html", context={"return_url":str(return_url),"user":db_user}
+        )
 
 @router.post("/signout")
 async def signout(request:Request, token:str =Depends(oauth)):
