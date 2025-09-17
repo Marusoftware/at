@@ -2,21 +2,23 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
-import contextlib
+import contextlib, asyncio
 from os.path import dirname
 
 from .exceptions import APIError, Forbidden, NotFound
 from .config import Settings
 from .db import DB_CONFIG
+from .mail import mail
 
 from tortoise.contrib.fastapi import RegisterTortoise
-
-
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     async with RegisterTortoise(app, config=DB_CONFIG, use_tz=True, timezone=settings.TZ):
+        loop = asyncio.get_running_loop()
+        mailtask=loop.create_task(mail._sendloop())
         yield
+        mailtask.cancel()
 
 def custom_generate_unique_id(route: APIRoute):
     return f"{f'{route.tags[0]}-'if len(route.tags) else ''}{route.name}"

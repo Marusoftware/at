@@ -1,24 +1,27 @@
+from email.message import EmailMessage
 from typing import Annotated, List, Optional, Union
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from fastapi import APIRouter, Body, Depends, Form, Request
+from fastapi import APIRouter, Depends, Request
 import secrets
 from fastapi.templating import Jinja2Templates
 from passlib.context import CryptContext
-from pydantic import HttpUrl, SecretStr, ValidationError
+from pydantic import HttpUrl, ValidationError
 from tortoise.expressions import Q
 from tortoise import timezone
 from os.path import dirname
 
+from ..mail import mail
 from ..exceptions import APIError, Forbidden
 from ..models.response.user import User, Token
 from ..models.request.auth import UserCreate
-from ..models.db.user import User as UserDB
-from ..models.db import Token as TokenDB
+from ..models.db.user import TokenType
+from ..models.db import User as UserDB, Token as TokenDB
 from ..config import Settings
 
 router=APIRouter(tags=["Auth"])
-oauth=OAuth2PasswordBearer(tokenUrl="/api/v1/auth/signin")
+oauth=OAuth2PasswordBearer(tokenUrl="/auth/signin")
+oauth_no_error=OAuth2PasswordBearer(tokenUrl="/auth/signin", auto_error=False)
 crypt=CryptContext(schemes=["bcrypt"], deprecated="auto")
 config=Settings()
 templates = Jinja2Templates(directory=dirname(__file__)+"/../templates")
@@ -28,9 +31,23 @@ router.include_router(sso_router, prefix="/sso")
 
 async def get_user(token: oauth=Depends()): # type: ignore
     token:Union[TokenDB,None]=await TokenDB.get_or_none(token=token).prefetch_related("user")
-    
-    if token is None or timezone.now()>=token.expired_in:
+    if token is None:
         raise Forbidden()
+    elif token.token_type != TokenType.bearer or timezone.now()>=token.expired_in or token.user is None:
+        raise Forbidden()
+    elif not token.user.is_verified:
+        raise Forbidden(detail="Please verify email")
+    else:
+        return token.user
+
+async def get_user_no_error(token: oauth_no_error=Depends()): # type: ignore
+    if token is None:
+        return None
+    token:Union[TokenDB,None]=await TokenDB.get_or_none(token=token).prefetch_related("user")
+    if token is None:
+        return None
+    elif token.token_type != TokenType.bearer or timezone.now()>=token.expired_in or token.user is None:
+        return None
     else:
         return token.user
 
@@ -95,6 +112,15 @@ async def signup(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
     if await UserDB.exists(Q(name=user.name) | Q(mail=user.mail)):
         return show_signup_error(request, return_url)
     db_user=await UserDB.create(name=user.name, mail=user.mail, password=crypt.hash(user.password.get_secret_value()))
+    token=await TokenDB.create(token=secrets.token_hex(10), expired_in=timezone.now()+config.TOKEN_EXPIRE,
+                               token_type=TokenType.mail_verify, user=db_user, return_url=return_url)
+    msg=EmailMessage()
+    msg['Subject'] = "Marusoftware: Email Verification"
+    msg['To'] = db_user.mail
+    msg['From'] = "noreply@marusoftware.net"
+    msg.preamble="Thank you for registration for @Marusoftware.\n"\
+                f"{config.CALLBACK_URL}?mail_token={token.token}"
+    await mail.addMessage(msg)
     if "application/json" in request.headers.get("accept",""):
         return db_user
     else:
@@ -116,3 +142,21 @@ async def session(request:Request):
         Token(access_token=user["token"], token_type="bearer", user_id=user["id"], expired_in=user["expired_in"]) 
         for user in request.session["users"] if await TokenDB.exists(token=user["token"], expired_in__gt=timezone.now())
         ]
+
+@router.get("/callback")
+async def callback(request:Request, mail_token:Optional[str]=None):
+    if mail_token is None:
+        raise Forbidden(detail="No infomation for authentication")
+    token = await TokenDB.get_or_none(token=mail_token, token_type=TokenType.mail_verify).prefetch_related("user")
+    if token is None:
+        raise Forbidden(detail="Invalid token")
+    user = token.user
+    if user is None:
+        raise Forbidden(detail="Invalid token")
+    user.is_verified = True
+    await user.save()
+    return_url=token.return_url
+    await token.delete()
+    return templates.TemplateResponse(
+            request=request, name="callback/success.html", context={"return_url":return_url, "user":user}
+        )
