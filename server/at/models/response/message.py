@@ -1,12 +1,7 @@
+from typing import List
 from uuid import UUID
 from pydantic import BaseModel
 from datetime import datetime
-
-class Thread(BaseModel):
-    id: UUID
-    name: str
-    created_in: datetime
-    owner_id: UUID
 
 class Message(BaseModel):
     id: UUID
@@ -15,3 +10,12 @@ class Message(BaseModel):
     last_update: datetime
     user_id: UUID
     thread_id: UUID
+
+class Thread(BaseModel):
+    id: UUID
+    name: str
+    created_in: datetime
+    owner_id: UUID
+
+class ThreadWithMessages(Thread):
+    messages: List[Message]
