@@ -2,7 +2,7 @@
 name = "at"
 version = "0.0.1"
 description = "at"
-authors = ["at <at@marusoftware.net>"]
+authors = ["Maruo.S <raspi-maru2004@outlook.jp>"]
 license = "MIT"
 readme = "README.md"
 
@@ -19,6 +19,8 @@ passlib = "^1.7.4"
 python-multipart = "^0.0.18"
 aiosmtpd = "^1.4.6"
 fastapi-sso = "^0.18.0"
+jinja2 = "^3.1.6"
+aiosmtplib = "^4.0.1"
 
 [tool.poetry.group.dev.dependencies]
 fastapi = {extras = ["dev"], version = "^0.115.3"}

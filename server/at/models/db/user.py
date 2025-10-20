@@ -8,11 +8,15 @@ class User(Model):
     password=CharField(1024)
     mail=CharField(1024, unique=True)
     created_in=DatetimeField(auto_now_add=True)
+    is_verified=BooleanField(default=False)
     tokens:ReverseRelation["Token"]
+    messages:ReverseRelation["Message"]
+    threads: ReverseRelation["Thread"]
 
 class TokenType(StrEnum):
     bearer="bearer"
     oauth_state="state"
+    mail_verify="mail"
 
 class Token(Model):
     token=CharField(1024, pk=True)
@@ -21,3 +25,5 @@ class Token(Model):
     token_type=CharEnumField(TokenType, default=TokenType.bearer)
     return_url=CharField(max_length=512, null=True)
     user:ForeignKeyNullableRelation[User]=ForeignKeyField("models.User", related_name="tokens", null=True)
+
+from .message import Message, Thread

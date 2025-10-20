@@ -1,0 +1,23 @@
+{% extends "template.html" %}
+{% block head %}
+<title>Sign up - Marusoftware</title>
+{% endblock %}
+{% block body %}
+<div class="container is-flex columuns is-vcentered is-centered">
+  <div class="box column p-4 my-auto">
+    <section class="hero is-primary">
+      <div class="hero-body">
+        <p class="title">Sign up</p>
+      </div>
+    </section>
+    <article class="message is-info">
+      <div class="message-header">
+        <p>Success!</p>
+      </div>
+      <div class="message-body">
+        Welcome! {{ user.name }}. We sent verification URL to your mail({{ user.mail }}).
+      </div>
+    </article>
+  </div>
+</div>
+{% endblock %}

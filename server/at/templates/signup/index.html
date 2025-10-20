@@ -1,0 +1,47 @@
+{% extends "template.html" %}
+{% block head %}
+<title>Sign up - Marusoftware</title>
+{% endblock %}
+{% block body %}
+<div class="container is-flex columuns is-vcentered is-centered">
+  <form class="box column p-4 my-auto" method="POST" action="{{ url_for('signup') }}?return_url={{ return_url }}">
+    <section class="hero is-primary">
+      <div class="hero-body">
+        <p class="title">Sign up</p>
+      </div>
+    </section>
+    {% if error is defined %}
+      <article class="message is-danger">
+        <div class="message-header">
+          <p>Error</p>
+        </div>
+        <div class="message-body">
+          {{ error }}
+        </div>
+      </article>
+    {% endif %}
+    <div class="field">
+      <label class="label">User Name</label>
+      <div class="control">
+        <input class="input" type="text" name="name" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">Email</label>
+      <div class="control">
+        <input class="input" type="text" name="mail" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">Password</label>
+      <div class="control">
+        <input class="input" type="password" name="password" />
+      </div>
+    </div>
+
+    <button class="button is-primary">Sign up</button>
+  </form>
+</div>
+{% endblock %}
