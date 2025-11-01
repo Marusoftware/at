@@ -5,6 +5,7 @@ description = "at"
 authors = ["Maruo.S <raspi-maru2004@outlook.jp>"]
 license = "MIT"
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10.0"
