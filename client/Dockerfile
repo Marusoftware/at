@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:24-slim
 
 WORKDIR /app/client
 COPY ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

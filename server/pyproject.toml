@@ -14,7 +14,7 @@ tortoise-orm = "^0.21.6"
 pydantic = {extras = ["email"], version = "^2.9.2"}
 pydantic-settings = "^2.5.2"
 itsdangerous = "^2.2.0"
-aerich = "^0.7.2"
+aerich = "^0.9.2"
 uvicorn = {extras = ["standard"], version = "^0.31.0"}
 passlib = "^1.7.4"
 python-multipart = "^0.0.18"

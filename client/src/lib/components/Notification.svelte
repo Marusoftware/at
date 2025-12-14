@@ -1,18 +1,24 @@
 <script lang="ts">
-    export let title:string
-    export let subtitle:string|undefined
-    export let kind="info"
-    import { Toast } from 'flowbite-svelte';
-	import { ExclamationCircleOutline, InfoCircleOutline } from 'flowbite-svelte-icons';
+    import Toast from 'flowbite-svelte/Toast.svelte';
+	import Exclamation from "flowbite-svelte-icons/ExclamationCircleOutline.svelte";
+    import Info  from 'flowbite-svelte-icons/InfoCircleOutline.svelte';
+	import type { EventHandler } from 'svelte/elements';
 
     const kinds:{[key: string]: {color:'blue'|'yellow', icon: any}}={
-        'info':{ color:"blue", icon:InfoCircleOutline},
-        'warn':{ color:"yellow", icon:ExclamationCircleOutline },
+        'info':{ color:"blue", icon:Info},
+        'warn':{ color:"yellow", icon:Exclamation },
     }
+    let { onclose, title, subtitle, kind = "info" }:{
+        title:string, subtitle:string|undefined, kind:string,
+        onclose: EventHandler<Event, HTMLDivElement> | null | undefined
+    } = $props();
 </script>
 
-<Toast on:close color={kinds[kind].color}>
-    <svelte:component slot="icon" this={kinds[kind].icon} />
+<Toast class="rounded-md" onclose={onclose} color={kinds[kind].color}>
+    {#snippet icon()}
+        {@const Icon = kinds[kind].icon}
+        <Icon />
+    {/snippet}
     {#if subtitle}
         <span class="font-semibold text-gray-900 dark:text-white">{title}</span>
     {:else}

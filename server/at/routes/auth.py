@@ -51,14 +51,16 @@ async def get_user_no_error(token: oauth_no_error=Depends()): # type: ignore
     else:
         return token.user
 
-@router.get("/signin", response_class=HTMLResponse)
-async def signin_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
-    return templates.TemplateResponse(
-        request=request, name="signin/index.html", context={"return_url":return_url}
-    )
+#@router.get("/signin", response_class=HTMLResponse)
+#async def signin_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+#    if request.headers.get("host", "") not in config.AUTH_ALLOWED_HOSTS:
+#        raise APIError (detail="Access Denied")
+#    return templates.TemplateResponse(
+#        request=request, name="signin/index.html", context={"return_url":return_url}
+#    )
 
 def show_signin_error(request:Request, return_url:HttpUrl):
-    if "application/json" in request.headers.get("accept", ""):
+    if "application/json" in request.headers.get("origin", ""):
         raise APIError(detail="Password or Username is wrong.")
     else:
         return templates.TemplateResponse(
@@ -67,6 +69,9 @@ def show_signin_error(request:Request, return_url:HttpUrl):
 
 @router.post("/signin", response_model=Token)
 async def signin(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+    print (config.AUTH_ALLOWED_ORIGINS, flush=True)
+    if HttpUrl(request.headers.get("origin", "")) not in config.AUTH_ALLOWED_ORIGINS and "application/json" not in request.headers.get("accept", ""):
+        raise APIError (detail="Access Denied")
     user=await UserDB.get_or_none(Q(name=form_data.username) | Q(mail=form_data.username))
     if user is None:
         return show_signin_error(request, return_url)
@@ -93,6 +98,8 @@ def show_signup_error(request:Request, return_url:HttpUrl):
 
 @router.get("/signup", response_class=HTMLResponse)
 async def signup_html(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
+    if request.headers.get("host", "") not in config.AUTH_ALLOWED_HOSTS:
+        raise APIError (detail="Access Denied")
     return templates.TemplateResponse(
         request=request, name="signup/index.html", context={"return_url":str(return_url)}
     )
@@ -118,8 +125,9 @@ async def signup(request:Request, return_url:HttpUrl=config.DEFAULT_RETURN_URL):
     msg['Subject'] = "Marusoftware: Email Verification"
     msg['To'] = db_user.mail
     msg['From'] = "noreply@marusoftware.net"
-    msg.preamble="Thank you for registration for @Marusoftware.\n"\
-                f"{config.CALLBACK_URL}?mail_token={token.token}"
+    msg.set_content("Thank you for registration for @Marusoftware.\n"\
+                f"{config.CALLBACK_URL}?mail_token={token.token}")
+
     await mail.addMessage(msg)
     if "application/json" in request.headers.get("accept",""):
         return db_user

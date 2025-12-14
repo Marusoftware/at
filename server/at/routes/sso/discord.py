@@ -8,8 +8,8 @@ from pydantic import HttpUrl
 from tortoise import timezone
 
 from ...config import Settings
-from ...models.db import Token as TokenDB, User as UserDB
-from ...models.db.user import TokenType
+from ...models.db import Token as TokenDB, User as UserDB, Connection as ConnectionDB
+from ...models.db.user import TokenType, ConnectionType
 from ...models.response.user import Token
 
 settings=Settings()
@@ -47,8 +47,12 @@ async def discord_callback(request: Request, state:str):
     
     user, _=await UserDB.get_or_create({
         "name": user_info.display_name,
-        "password": ""
+        "password": None
     }, mail=user_info.email)
+    await ConnectionDB.get_or_create({
+        "connection_type":ConnectionType.discord,
+        "openid":user_info.model_dump()
+    }, user=user, connection_id=user_info.id)
     
     token=await TokenDB.create(token=secrets.token_hex(32), user=user, expired_in=timezone.now()+settings.TOKEN_EXPIRE)
     await state_token.delete()

@@ -27,7 +27,7 @@ app = FastAPI(
     title="at",
     description="at",
     version="0.0.1",
-    #root_path="/api/v1",
+    root_path="/api/v1",
     generate_unique_id_function=custom_generate_unique_id,
     responses={400: {"model": APIError}, 
                401: {"model": Forbidden},
