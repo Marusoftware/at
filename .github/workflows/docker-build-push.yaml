@@ -46,10 +46,11 @@ jobs:
           registry: ghcr.io
           username: ${{ env.OWNER_LC }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          keep-state: true
+          cleanup: false
       - name: Extract docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -69,7 +70,7 @@ jobs:
           rm -rf ./digests
           mkdir -p ./digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "./digests/${digest#sha256:}"          
+          touch "./digests/${digest#sha256:}"
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
