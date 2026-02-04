@@ -5,6 +5,7 @@ from tortoise.fields import *
 class User(Model):
     id=UUIDField(pk=True)
     name=CharField(1024, unique=True)
+    display_name=CharField(1024)
     password=CharField(1024, null=True)
     mail=CharField(1024, unique=True)
     created_in=DatetimeField(auto_now_add=True)

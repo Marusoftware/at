@@ -9,7 +9,7 @@ export const ssr = false
 const user = writable<Token|undefined>(undefined);
 
 export const load = async ()=>{
-    client.setConfig({baseUrl:"/api/v1", auth:()=>"Bearer "+get(user)?.access_token})
+    client.setConfig({baseUrl:"/api/v1", auth:()=>"Bearer "+get(user)?.access_token, headers:{accept:"application/json"}, throwOnError:false})
     try {
         const token = await AuthService.authSession();
         if(token.data && token.data.length>=1){

@@ -7,7 +7,7 @@ from datetime import timedelta as _timedelta
 
 class Settings(BaseSettings):
     DATABASE_URL:str ="sqlite://./test.db"
-    CALLBACK_URL:str = "http://localhost:8000/auth/callback"
+    MAIL_CALLBACK_URL:str = "http://localhost:8000/auth/mail_verify"
     SECRET:str = secrets.token_urlsafe(15)
     SERVE_STATIC:Optional[str] = None
     TZ:str = "Asia/Tokyo"
@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     DISCORD_CLIENT_SECRET: Optional[str]=None
     DISCORD_CLIENT_REDIRECT: str="http://localhost:8000/auth/sso/discord/callback"
     MAIL_SERVER:Optional[str]=None
+    MAIL_VERIFY_SUBJECT:str = "Marusoftware: Email Verification"
+    MAIL_VERIFY_FROM:str = "noreply@marusoftware.net"
     MAIL_OPTIONS:dict={}
+    SERVICE_NAME:str="@Marusoftware"
     MTA_MODE:bool=False
     
     @computed_field

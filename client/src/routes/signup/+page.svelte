@@ -6,16 +6,19 @@
     import Input from "flowbite-svelte/Input.svelte";
     import Label from "flowbite-svelte/Label.svelte";
     import A from "flowbite-svelte/A.svelte";
+    import Stepper from "flowbite-svelte/DetailedStepper.svelte"
 	import { goto } from "$app/navigation";
+	import type { DetailedStep } from "flowbite-svelte"
     
-    let username=$state("");
-    let password=$state("");
     let mail=$state("");
+    let current_step=$state(1);
+    const steps:DetailedStep[] = [
+        {id:1, label:"Email", description:"Select account Email address"},
+        {id:2, label:"Verification"},
+    ]
     const onSubmit=async (e:SubmitEvent) => {
         e.preventDefault()
-        await AuthService.authSignup({body:{name:username, password, mail}});
-        username="";
-        password="";
+        await AuthService.authSignup({body:{mail}});
         mail="";
         goto("/signin");
     }
@@ -23,13 +26,10 @@
 
 <Card class="mx-auto p-8">
     <Heading tag="h3">サインアップ</Heading>
+    <Stepper steps={steps} bind:current={current_step} clickable={false} />
     <form onsubmit={onSubmit} class="space-y-2 flex flex-col">
-            <Label for="username">User Name</Label>
-            <Input id="username" type="text" bind:value={username} required />
             <Label for="mail">Email Address</Label>
-            <Input id="mail" type="email" bind:value={mail} required />
-            <Label for="password">Password</Label>
-            <Input id="password" type="password" bind:value={password} required />
+            <Input id="mail" type="email" bind:value={mail} autocomplete="email" required />
             <Button type="submit">Sign up</Button>
     </form>
     <p>すでにアカウントをお持ちの方は<A href="/signin">こちら</A></p>

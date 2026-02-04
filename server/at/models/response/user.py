@@ -8,7 +8,10 @@ class Token(BaseModel):
     user_id:UUID
     expired_in:datetime
 
-class User(BaseModel):
+class UserNoMail(BaseModel):
     id:UUID
+    display_name:str
+
+class User(UserNoMail):
     name:str
     mail:EmailStr
